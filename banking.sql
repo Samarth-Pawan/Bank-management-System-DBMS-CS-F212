@@ -374,20 +374,20 @@ DELIMITER ;
 -- CALL loan_approval( 720, 24, 12000, 'Car', 4.5, 36);
 -- CALL loan_approval( 530, 13, 24000, 'House', 3.2, 48);
 
-DELIMITER //
-CREATE TRIGGER after_update_loan_repayment
-AFTER UPDATE ON banking.loan_payments
-FOR EACH ROW
-BEGIN
-    IF NEW.status = 'Paid' THEN
-        -- Update credit score only if it does not exceed the maximum of 800
-        UPDATE banking.customer
-        SET credit_score = LEAST(credit_score + 5, 800)
-        WHERE customer_id = NEW.customer_id;
-    END IF;
-END;
-//
-DELIMITER ;
+-- DELIMITER //
+-- CREATE TRIGGER after_update_loan_repayment
+-- AFTER DELETE ON banking.loan
+-- FOR EACH ROW
+-- BEGIN
+--     IF NEW.status = 'Paid' THEN
+--         -- Update credit score only if it does not exceed the maximum of 800
+--         UPDATE banking.customer
+--         SET credit_score = LEAST(credit_score + 5, 800)
+--         WHERE customer_id = NEW.customer_id;
+--     END IF;
+-- END;
+-- //
+-- DELIMITER ;
 
 DELIMITER //
 CREATE TRIGGER before_insert_loan_check_limit
