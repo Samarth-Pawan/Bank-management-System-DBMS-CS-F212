@@ -373,3 +373,75 @@ DELIMITER ;
 
 -- CALL loan_approval( 720, 24, 12000, 'Car', 4.5, 36);
 -- CALL loan_approval( 530, 13, 24000, 'House', 3.2, 48);
+
+DELIMITER //
+CREATE TRIGGER after_update_loan_repayment
+AFTER UPDATE ON banking.loan_payments
+FOR EACH ROW
+BEGIN
+    IF NEW.status = 'Paid' THEN
+        -- Update credit score only if it does not exceed the maximum of 800
+        UPDATE banking.customer
+        SET credit_score = LEAST(credit_score + 5, 800)
+        WHERE customer_id = NEW.customer_id;
+    END IF;
+END;
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER before_insert_loan_check_limit
+BEFORE INSERT ON banking.loan
+FOR EACH ROW
+BEGIN
+    DECLARE total_loans INT;
+    SELECT SUM(amount) INTO total_loans FROM banking.loan WHERE customer_id = NEW.customer_id;
+    IF (total_loans + NEW.amount) > 100000 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Loan limit exceeded for customer';
+    END IF;
+END;
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER monthly_interest_addition
+BEFORE UPDATE ON banking.account
+FOR EACH ROW
+BEGIN
+    DECLARE adjusted_interest_rate FLOAT;
+    DECLARE customer_credit_score INT;
+
+    -- Retrieve the customer's credit score
+    SELECT credit_score INTO customer_credit_score FROM banking.customer WHERE customer_id = NEW.customer_id;
+
+    -- Adjust the interest rate based on the customer score
+    IF customer_credit_score >= 750 THEN
+        SET adjusted_interest_rate = NEW.interest_rate + 0.5;  -- Higher interest rate for high credit score
+    ELSEIF customer_credit_score BETWEEN 650 AND 749 THEN
+        SET adjusted_interest_rate = NEW.interest_rate;        -- Normal interest rate
+    ELSE
+        SET adjusted_interest_rate = NEW.interest_rate - 0.5;  -- Lower interest rate for lower credit score
+    END IF;
+
+    -- Calculate the interest based on the adjusted interest rate
+    IF NEW.acc_type = 'Savings' THEN
+        SET NEW.balance = NEW.balance + (NEW.balance * (adjusted_interest_rate / 100) / 12);
+    END IF;
+END;
+//
+DELIMITER ;
+
+
+DELIMITER //
+CREATE TRIGGER auto_create_account
+AFTER INSERT ON banking.customer
+FOR EACH ROW
+BEGIN
+    -- Insert a new account for the newly added customer
+    INSERT INTO banking.account (customer_id, balance, acc_type, interest_rate)
+    VALUES (NEW.customer_id, 0, 'Checking', 1.0);
+END;
+//
+DELIMITER ;
+
+
