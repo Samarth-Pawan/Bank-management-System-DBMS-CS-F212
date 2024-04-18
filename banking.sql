@@ -540,7 +540,7 @@ DELIMITER ;
 
 DELIMITER //
 CREATE TRIGGER CheckMinimumBalance
-BEFORE UPDATE ON banking.transactions
+BEFORE INSERT ON banking.transactions
 FOR EACH ROW
 BEGIN
     DECLARE current_balance INT;
