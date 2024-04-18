@@ -538,4 +538,18 @@ END;
 //
 DELIMITER ;
 
+DELIMITER //
+CREATE TRIGGER CheckMinimumBalance
+BEFORE UPDATE ON banking.transactions
+FOR EACH ROW
+BEGIN
+    DECLARE current_balance INT;
+    SELECT balance INTO current_balance FROM banking.account WHERE account_no = NEW.acc_from;
+    IF NEW.trans_type = 'Withdrawal' AND (current_balance - NEW.amount) < 100 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Balance cannot drop below minimum required.';
+    END IF;
+END;
+//
+DELIMITER ;
+
 
