@@ -484,7 +484,7 @@ BEGIN
     -- Calculate the sum of all loans that have a duration exactly equal to the specified number of months
     SELECT SUM(amount) INTO v_total_owed
     FROM banking.loan
-    WHERE time_months >= p_loan_term;
+    WHERE time_months > p_loan_term;
 
     -- Check if there is no value found (NULL), then set to zero
     IF v_total_owed IS NULL THEN
@@ -508,7 +508,7 @@ BEGIN
     -- Calculate the sum of all loans that have a duration exactly equal to the specified number of months
     SELECT SUM(amount) INTO v_total_owed
     FROM banking.loan
-    WHERE time_months >= p_loan_term;
+    WHERE time_months <= p_loan_term;
 
     -- Check if there is no value found (NULL), then set to zero
     IF v_total_owed IS NULL THEN
