@@ -475,7 +475,7 @@ DELIMITER ;
 
 DELIMITER //
 
-CREATE PROCEDURE CalculateTotalOwedForLoanTerm(
+CREATE PROCEDURE CalculateTotalOwedAfter(
     IN p_loan_term INT  -- This is the number of months for the loan duration we are interested in.
 )
 BEGIN
@@ -484,7 +484,7 @@ BEGIN
     -- Calculate the sum of all loans that have a duration exactly equal to the specified number of months
     SELECT SUM(amount) INTO v_total_owed
     FROM banking.loan
-    WHERE time_months <= p_loan_term;
+    WHERE time_months >= p_loan_term;
 
     -- Check if there is no value found (NULL), then set to zero
     IF v_total_owed IS NULL THEN
@@ -497,4 +497,27 @@ END;
 //
 DELIMITER ;
 
+DELIMITER //
+
+CREATE PROCEDURE total_loans_recieved(
+    IN p_loan_term INT  -- This is the number of months for the loan duration we are interested in.
+)
+BEGIN
+    DECLARE v_total_owed DECIMAL(10,2) DEFAULT 0;
+
+    -- Calculate the sum of all loans that have a duration exactly equal to the specified number of months
+    SELECT SUM(amount) INTO v_total_owed
+    FROM banking.loan
+    WHERE time_months >= p_loan_term;
+
+    -- Check if there is no value found (NULL), then set to zero
+    IF v_total_owed IS NULL THEN
+        SET v_total_owed = 0;
+    END IF;
+
+    -- Output the total owed
+    SELECT CONCAT('Total amount owed for loans with a term of ', p_loan_term, ' months is $', FORMAT(v_total_owed, 2)) AS total_owed;
+END;
+//
+DELIMITER ;
 
