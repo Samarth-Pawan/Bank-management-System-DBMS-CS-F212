@@ -438,8 +438,8 @@ AFTER INSERT ON banking.customer
 FOR EACH ROW
 BEGIN
     -- Insert a new account for the newly added customer
-    INSERT INTO banking.account (customer_id, balance, acc_type, interest_rate)
-    VALUES (NEW.customer_id, 0, 'Checking', 1.0);
+    INSERT INTO banking.account (account_no, customer_id, balance, acc_type, interest_rate)
+    VALUES (NEW.customer_id, NEW.customer_id, 0, 'Checking', 1.0);
 END;
 //
 DELIMITER ;
