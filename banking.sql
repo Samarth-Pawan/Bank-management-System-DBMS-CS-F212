@@ -513,5 +513,24 @@ END;
 DELIMITER ;
 
 
+DELIMITER //
+
+CREATE TRIGGER CheckBankruptcyAfterLoanApproval
+AFTER INSERT ON banking.loan
+FOR EACH ROW
+BEGIN
+    DECLARE v_total_owed DECIMAL(20,2);
+
+    -- Calculate the total outstanding loan amount
+    SELECT SUM(amount) INTO v_total_owed FROM banking.loan;
+
+    -- Check if total loans exceed 10 million
+    IF v_total_owed > 10000000 THEN
+        -- Output a message indicating bankruptcy
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Bankrupt: Total outstanding loans exceed $10 million.';
+    END IF;
+END;
+//
+DELIMITER ;
 
 
