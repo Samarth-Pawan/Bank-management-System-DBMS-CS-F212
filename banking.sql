@@ -448,32 +448,6 @@ DELIMITER ;
 
 DELIMITER //
 
-CREATE PROCEDURE CalculateBranchOwed(
-    IN p_branch_no INT,
-    IN p_as_of_date DATE
-)
-BEGIN
-    DECLARE v_total_owed DECIMAL(10,2) DEFAULT 0;
-
-    -- Calculate the sum of all outstanding loans for the specified branch as of the given date
-    SELECT SUM(amount) INTO v_total_owed
-    FROM banking.loan AS l
-    JOIN banking.customer AS c ON l.customer_id = c.customer_id
-    JOIN banking.branch AS b ON c.branch_no = b.branch_no
-    WHERE b.branch_no = p_branch_no AND l.loan_date <= p_as_of_date;
-
-    -- Check if there is no value found (NULL), then set to zero
-    IF v_total_owed IS NULL THEN
-        SET v_total_owed = 0;
-    END IF;
-
-    -- Output the total owed
-    SELECT CONCAT('Total amount owed to Branch ', p_branch_no, ' as of ', p_as_of_date, ' is $', FORMAT(v_total_owed, 2)) AS total_owed;
-END;
-//
-DELIMITER ;
-
-DELIMITER //
 
 CREATE PROCEDURE CalculateTotalOwedAfter(
     IN p_loan_term INT  -- This is the number of months for the loan duration we are interested in.
@@ -538,18 +512,6 @@ END;
 //
 DELIMITER ;
 
-DELIMITER //
-CREATE TRIGGER CheckMinimumBalance
-BEFORE INSERT ON banking.transactions
-FOR EACH ROW
-BEGIN
-    DECLARE current_balance INT;
-    SELECT balance INTO current_balance FROM banking.account WHERE account_no = NEW.acc_from;
-    IF NEW.trans_type = 'Withdrawal' AND (current_balance - NEW.amount) < 100 THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Balance cannot drop below minimum required.';
-    END IF;
-END;
-//
-DELIMITER ;
+
 
 
