@@ -521,3 +521,21 @@ END;
 //
 DELIMITER ;
 
+
+DELIMITER //
+
+CREATE PROCEDURE ListTransactionsBetweenDates(
+    IN p_start_date DATE,
+    IN p_end_date DATE
+)
+BEGIN
+    -- Selecting transactions between the specified dates
+    SELECT transaction_no, acc_from, acc_to, transaction_date, amount, trans_type
+    FROM banking.transactions
+    WHERE transaction_date BETWEEN p_start_date AND p_end_date
+    ORDER BY transaction_date ASC;
+END;
+//
+DELIMITER ;
+
+
