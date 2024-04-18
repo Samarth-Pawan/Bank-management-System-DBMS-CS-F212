@@ -475,19 +475,16 @@ DELIMITER ;
 
 DELIMITER //
 
-CREATE PROCEDURE CalculateBranchOwed(
-    IN p_branch_no INT,
+CREATE PROCEDURE CalculateTotalOwedForLoanTerm(
     IN p_loan_term INT  -- This is the number of months for the loan duration we are interested in.
 )
 BEGIN
     DECLARE v_total_owed DECIMAL(10,2) DEFAULT 0;
 
-    -- Calculate the sum of all loans for the specified branch with the exact loan duration
-    SELECT SUM(l.amount) INTO v_total_owed
-    FROM banking.loan AS l
-    JOIN banking.customer AS c ON l.customer_id = c.customer_id
-    JOIN banking.branch AS b ON c.branch_no = b.branch_no
-    WHERE b.branch_no = p_branch_no AND l.time_months = p_loan_term;
+    -- Calculate the sum of all loans that have a duration exactly equal to the specified number of months
+    SELECT SUM(amount) INTO v_total_owed
+    FROM banking.loan
+    WHERE time_months <= p_loan_term;
 
     -- Check if there is no value found (NULL), then set to zero
     IF v_total_owed IS NULL THEN
@@ -495,8 +492,9 @@ BEGIN
     END IF;
 
     -- Output the total owed
-    SELECT CONCAT('Total amount owed to Branch ', p_branch_no, ' for loans with a term of ', p_loan_term, ' months is $', FORMAT(v_total_owed, 2)) AS total_owed;
+    SELECT CONCAT('Total amount owed for loans with a term of ', p_loan_term, ' months is $', FORMAT(v_total_owed, 2)) AS total_owed;
 END;
 //
 DELIMITER ;
+
 
