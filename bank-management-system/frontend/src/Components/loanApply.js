@@ -41,6 +41,7 @@ function LoanForm() {
       // If the provided username doesn't match the one in the URL, show an error
       alert("Username does not match the URL.");
     }
+    console.log(loan);
   };
 
   return (

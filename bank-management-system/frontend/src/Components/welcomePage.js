@@ -57,6 +57,10 @@ const Dashboard = () => {
     navigate(`/transaction/${username}`);
   };
 
+  const redirectToViewTransactions = () => {
+    navigate(`/viewTransactions/${username}`);
+  };
+
   const redirectToOwedMoney = () => {
     navigate(`/amountOwed/${username}`);
   };
@@ -65,6 +69,7 @@ const Dashboard = () => {
     <DashboardContainer>
       <Heading>Welcome {username}</Heading>
       <ButtonContainer>
+        <Button onClick={redirectToViewTransactions}>View Transactions</Button>
         <Button onClick={redirectToCreateAccount}>Create Account</Button>
         <Button onClick={redirectToCreateCard}>Create Card</Button>
         <Button onClick={redirectToApplyLoan}>Apply Loan</Button>

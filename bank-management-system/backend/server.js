@@ -8,7 +8,7 @@ const app = express();
 const pool = createPool({
   host: "localhost",
   user: "root",
-  password: "$entropics110",
+  password: "sqlsqlsql",
   database: "banking",
   connectionLimit: 10,
 });
@@ -378,7 +378,7 @@ app.post("/api/loans", (req, res) => {
 
   // Check customer credentials
   const validateQuery =
-    "SELECT customer_id FROM customer WHERE f_name = ? AND password = ?";
+    "SELECT customer_id, credit_score FROM customer WHERE f_name = ? AND password = ?";
   pool.query(
     validateQuery,
     [username, password],
@@ -397,6 +397,16 @@ app.post("/api/loans", (req, res) => {
 
       // If credentials are valid, proceed to insert into the loan table
       const customerId = validateResult[0].customer_id;
+      const creditScore = validateResult[0].credit_score;
+
+      if (creditScore < 500) {
+        // Credit score is too low to apply for a loan
+        console.log("Credit score is too low to apply for a loan");
+        return res
+          .status(400)
+          .json({ error: "Credit score is too low to apply for a loan" });
+      }
+
       const query =
         "INSERT INTO loan (customer_id, amount, collateral, interest, time_months) VALUES (?, ?, ?, ?, ?)";
       pool.query(
@@ -407,17 +417,35 @@ app.post("/api/loans", (req, res) => {
             console.error("Error inserting loan:", err);
             return res.status(500).json({ error: "Failed to insert loan" });
           }
+
           console.log("Loan application submitted successfully:", result);
 
-          res
-            .status(201)
-            .json({ message: "Loan application submitted successfully" });
+          // Check if the loan was automatically approved by the trigger
+          // If the loan was not approved, rollback the transaction
+          if (!result.affectedRows) {
+            console.log("Loan was not approved. Rolling back transaction.");
+            pool.query("ROLLBACK");
+            return res.status(400).json({ error: "Loan was not approved" });
+          }
+
+          // If the loan was approved, commit the transaction
+          pool.query("COMMIT", (commitErr) => {
+            if (commitErr) {
+              console.error("Error committing transaction:", commitErr);
+              return res
+                .status(500)
+                .json({ error: "Failed to commit transaction" });
+            }
+            console.log("Transaction committed successfully.");
+            res.status(201).json({
+              message: "Loan application submitted and approved successfully",
+            });
+          });
         }
       );
     }
   );
 });
-
 
 app.post("/api/loanAmount", (req, res) => {
   const { username, password } = req.body;
@@ -425,64 +453,72 @@ app.post("/api/loanAmount", (req, res) => {
   // Check customer credentials
   const validateQuery =
     "SELECT customer_id FROM customer WHERE f_name = ? AND password = ?";
-  pool.query(validateQuery, [username, password], (validateErr, validateResult) => {
-    if (validateErr) {
-      console.error("Error validating customer credentials:", validateErr);
-      return res
-        .status(500)
-        .json({ error: "Failed to validate customer credentials" });
-    }
-
-    if (validateResult.length === 0) {
-      // If no matching customer found
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    // If credentials are valid, proceed to call the stored procedure
-    const customerId = validateResult[0].customer_id;
-    console.log("Customer ID:", customerId);
-
-    // Call the stored procedure to calculate the loan amount
-    const query = "CALL CalculateLoanAmount(?, @total_amount)";
-    pool.query(query, [customerId], (err) => {
-      if (err) {
-        console.error("Error calling stored procedure:", err);
-        return res.status(500).json({ error: "Failed to calculate loan amount" });
+  pool.query(
+    validateQuery,
+    [username, password],
+    (validateErr, validateResult) => {
+      if (validateErr) {
+        console.error("Error validating customer credentials:", validateErr);
+        return res
+          .status(500)
+          .json({ error: "Failed to validate customer credentials" });
       }
 
-      // Retrieve the calculated loan amount from the session variable
-      const selectQuery = "SELECT @total_amount AS total_amount";
-      pool.query(selectQuery, (selectErr, selectResult) => {
-        if (selectErr) {
-          console.error("Error retrieving loan amount:", selectErr);
-          return res.status(500).json({ error: "Failed to retrieve loan amount" });
+      if (validateResult.length === 0) {
+        // If no matching customer found
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // If credentials are valid, proceed to call the stored procedure
+      const customerId = validateResult[0].customer_id;
+      console.log("Customer ID:", customerId);
+
+      // Call the stored procedure to calculate the loan amount
+      const query = "CALL CalculateLoanAmount(?, @total_amount)";
+      pool.query(query, [customerId], (err) => {
+        if (err) {
+          console.error("Error calling stored procedure:", err);
+          return res
+            .status(500)
+            .json({ error: "Failed to calculate loan amount" });
         }
 
-        const loanAmount = selectResult[0].total_amount;
-        console.log("Fetched Loan Amount:", loanAmount);
-        res.status(200).json({ loan_amount: loanAmount });
+        // Retrieve the calculated loan amount from the session variable
+        const selectQuery = "SELECT @total_amount AS total_amount";
+        pool.query(selectQuery, (selectErr, selectResult) => {
+          if (selectErr) {
+            console.error("Error retrieving loan amount:", selectErr);
+            return res
+              .status(500)
+              .json({ error: "Failed to retrieve loan amount" });
+          }
+
+          const loanAmount = selectResult[0].total_amount;
+          console.log("Fetched Loan Amount:", loanAmount);
+          res.status(200).json({ loan_amount: loanAmount });
+        });
       });
-    });
-  });
+    }
+  );
 });
 
 // GET route for fetching the last 10 transactions
 app.get("/api/transactions/:username", (req, res) => {
   const username = req.params.username;
-  
+
   // Query to fetch the customer ID based on the username
   const customerIdQuery = "SELECT customer_id FROM customer WHERE f_name = ?";
-  
+
   // Execute the query to get the customer ID
   pool.query(customerIdQuery, [username], (err, results) => {
     if (err) {
       console.error("Error fetching customer ID:", err);
       return res.status(500).json({ error: "Failed to fetch customer ID" });
     }
-    
+
     // Extract the customer ID from the results
     const customerId = results[0].customer_id;
-    
+
     // Call the stored procedure to fetch the last 10 transactions
     const transactionQuery = "CALL GetLast10Transactions(?)";
     pool.query(transactionQuery, [customerId], (err, results) => {
@@ -490,10 +526,10 @@ app.get("/api/transactions/:username", (req, res) => {
         console.error("Error fetching transactions:", err);
         return res.status(500).json({ error: "Failed to fetch transactions" });
       }
-      
+
       // Extract the transactions from the results
       const transactions = results[0];
-      
+
       // Send the retrieved transactions as JSON response
       res.json({ transactions });
     });
@@ -501,4 +537,3 @@ app.get("/api/transactions/:username", (req, res) => {
 });
 const PORT = 8080;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
